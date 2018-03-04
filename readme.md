@@ -3,6 +3,8 @@
 
 This tool can be used to benchmark various Database performance under "no-sql" usage conditions.
 
+[![Build Status](https://travis-ci.org/atsdb/db-perf-test.svg?branch=master)](https://travis-ci.org/atsdb/db-perf-test)
+
 ## Database/Table Configuration
 
 The database are used in "no-sql" mode, i.e. without any join between table. The objective of the test is to insert as fast a possible into the table, and read-back as fast as possible.
