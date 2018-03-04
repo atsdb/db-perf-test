@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:22:12
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 14:23:03
+* @Last Modified time: 2018-03-04 14:24:44
  */
 package dbdriver
 
@@ -78,13 +78,7 @@ func (d *MysqlDriver) Create(table string, fields []string) (Table, error) {
 	cquery := "create table IF NOT EXISTS `" + table + "` (\n" + tablefields + "\n" + tablekeys + "\n) "
 	cquery += "ENGINE=" + d.engine + "  DEFAULT CHARSET=utf8;"
 
-	ctx := context.Background()
-	conn, err := d.db.Conn(ctx)
-	if err != nil {
-		log.Fatal("[Create] Can not create connection: ", err)
-	}
-
-	if _, err := conn.ExecContext(ctx, cquery); err != nil {
+	if _, err := d.db.Exec(cquery); err != nil {
 		log.Fatal("[Create] Can not create table: ", err, "\n\n", cquery)
 		return MysqlTable{}, err
 	}
