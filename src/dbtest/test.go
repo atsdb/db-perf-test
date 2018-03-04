@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:42:09
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 17:43:27
+* @Last Modified time: 2018-03-04 17:47:08
  */
 package dbtest
 
@@ -40,6 +40,9 @@ func DoPerfTest(dbcon string, mode string, engine string, table string, duration
 		for nThreads := 1; nThreads < concurrent; nThreads++ {
 			multiTheadRead(dbcon, engine, table, nThreads).Summary()
 		}
+
+	default:
+		log.Printf("Unknown test mode '%s'\n", mode)
 
 	}
 

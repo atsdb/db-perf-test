@@ -2,7 +2,7 @@
 * @Author: ron
 * @Date:   2017-05-03 09:12:55
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 17:37:06
+* @Last Modified time: 2018-03-04 17:47:21
  */
 
 package main
@@ -10,7 +10,6 @@ package main
 import (
 	"dbtest"
 	"flag"
-	"fmt"
 )
 
 func main() {
@@ -23,11 +22,6 @@ func main() {
 	var table = flag.String("table", "light", "Table type (large or light)")
 
 	flag.Parse()
-
-	if *mode != "read" && *mode != "write" {
-		fmt.Println("Please specify the mode (read or write)")
-		return
-	}
 
 	dbtest.DoPerfTest(*db, *mode, *engine, *table, *duration, *concurrent)
 }
