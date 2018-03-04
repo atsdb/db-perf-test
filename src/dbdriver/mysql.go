@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:22:12
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 13:31:40
+* @Last Modified time: 2018-03-04 14:23:03
  */
 package dbdriver
 
@@ -22,7 +22,6 @@ type MysqlDriver struct {
 
 type MysqlTable struct {
 	*MysqlDriver
-	conn    *sql.Conn
 	context context.Context
 	fields  []string
 	types   []string
@@ -91,8 +90,6 @@ func (d *MysqlDriver) Create(table string, fields []string) (Table, error) {
 	}
 	return MysqlTable{
 		MysqlDriver: d,
-		conn:        conn,
-		context:     ctx,
 		fields:      fieldNames,
 		table:       table,
 		types:       fieldTypes,
@@ -113,7 +110,7 @@ func (d MysqlTable) PrepareInsert() QueryRunner {
 
 func (d MysqlTable) PrepareTxInsert() (*sql.Tx, QueryRunner) {
 
-	tx, err := d.conn.BeginTx(d.context, nil)
+	tx, err := d.db.Begin()
 	if err != nil {
 		log.Fatal("[write] can not start the transaction", err)
 	}
@@ -140,7 +137,7 @@ func (d *MysqlTable) prepareInsert(tx *sql.Tx) QueryRunner {
 	if tx != nil {
 		stmt, err = tx.Prepare(query)
 	} else {
-		stmt, err = d.conn.PrepareContext(d.context, query)
+		stmt, err = d.db.Prepare(query)
 	}
 
 	if err != nil {
