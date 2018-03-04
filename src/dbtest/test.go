@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:42:09
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 13:52:44
+* @Last Modified time: 2018-03-04 14:09:41
  */
 package dbtest
 
@@ -34,7 +34,7 @@ func DoPerfTest(dbcon string, mode string, engine string, durationInSecond int) 
 
 	if mode == "read" {
 
-		for nThreads := 1; nThreads < 10; nThreads++ {
+		for nThreads := 1; nThreads < 5; nThreads++ {
 			multiTheadRead(dbcon, engine, testType, nThreads).Summary()
 		}
 
@@ -101,9 +101,10 @@ func multiTheadRead(dbcon string, engine string, testType string, nThreads int) 
 
 	perf.Start(fmt.Sprintf("read/%d-threads", nThreads), time.Minute)
 	nrows := perf.NRows()
+	log.Printf("[read] There are %d rows\n", nrows)
 	start := int64(0)
 	for n := 0; n < nThreads; n++ {
-		end := (nrows + 1) / int64(nThreads)
+		end := (nrows + 1) * int64(n+1) / int64(nThreads)
 		go perf.Read(start, end)
 		start = end
 	}

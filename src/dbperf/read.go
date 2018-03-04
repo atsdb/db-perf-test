@@ -1,8 +1,8 @@
 /*
 * @Author: ronan
 * @Date:   2018-03-04 10:21:02
-* @Last Modified by:   ronan
-* @Last Modified time: 2018-03-04 13:01:18
+* @Last Modified by:   ron
+* @Last Modified time: 2018-03-04 14:09:15
  */
 package dbperf
 
@@ -16,9 +16,6 @@ func (p *PerformanceMonitor) Read(from int64, to int64) {
 
 	p.testWG.Add(1)
 
-	id2m := make([]string, (to - from + 1))
-	m2id := make(map[string]uint32)
-
 	where := fmt.Sprintf("where idx >=%d and idx<%d", from, to)
 	query := "select idx, value from " + p.table.Name() + " " + where
 	stmt, err := p.table.DB().Prepare(query)
@@ -28,6 +25,10 @@ func (p *PerformanceMonitor) Read(from int64, to int64) {
 
 	wg := &sync.WaitGroup{}
 	wg.Add(1)
+
+	id2m := make([]interface{}, (to - from + 1))
+	m2id := make(map[interface{}]uint32)
+
 	idxsync := make(chan int64)
 
 	readThread := func() {
@@ -38,7 +39,7 @@ func (p *PerformanceMonitor) Read(from int64, to int64) {
 		}
 
 		var idx int64
-		var name string
+		var name interface{}
 		nreads := 0
 		for rows.Next() {
 			e := rows.Scan(&idx, &name)

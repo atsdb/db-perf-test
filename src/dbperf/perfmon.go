@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:41:36
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 13:41:22
+* @Last Modified time: 2018-03-04 14:10:57
  */
 package dbperf
 
@@ -32,10 +32,8 @@ type PerfLogEntry struct {
 
 type PerformanceMonitor struct {
 	table     dbdriver.Table
-	nrows     int64
 	testWG    *sync.WaitGroup
 	reportWG  *sync.WaitGroup
-	instance  int
 	mutex     *sync.Mutex
 	startTime time.Time
 	running   bool
@@ -53,8 +51,6 @@ func NewPerfMonitor(table dbdriver.Table) *PerformanceMonitor {
 		reportWG: &sync.WaitGroup{},
 		mutex:    &sync.Mutex{},
 		table:    table,
-		instance: 0,
-		nrows:    0,
 		logs:     make([]PerfLogEntry, 0),
 	}
 
@@ -80,11 +76,9 @@ func (p *PerformanceMonitor) Inc(e error) {
 	} else {
 		if p.master != nil {
 			atomic.AddInt64(&p.master.opscount, 1)
-			atomic.AddInt64(&p.master.nrows, 1)
 
 		} else {
 			atomic.AddInt64(&p.opscount, 1)
-			atomic.AddInt64(&p.nrows, 1)
 		}
 	}
 }
@@ -100,7 +94,6 @@ func (p *PerformanceMonitor) Start(what string, duration time.Duration) {
 	p.opscount = 0
 	p.testname = what
 	p.duration = duration
-	p.nrows = 0
 	p.logs = make([]PerfLogEntry, 0)
 
 	if p.master == nil {
@@ -121,7 +114,7 @@ func (p *PerformanceMonitor) periodicReport() {
 
 			nops := p.opscount - pcount
 			crps := float64(nops) * float64(time.Millisecond) / float64(time.Since(start))
-			trps := float64(p.nrows) * float64(time.Millisecond) / float64(time.Since(p.startTime))
+			trps := float64(pcount) * float64(time.Millisecond) / float64(time.Since(p.startTime))
 
 			var cpuUsage float64
 			if usage, err := cpu.Percent(0, false); err == nil {
@@ -180,10 +173,9 @@ func (p *PerformanceMonitor) Summary() {
 
 	p.Finish()
 
-	count := p.nrows
 	dt := time.Now().Sub(p.startTime)
-	rps := float64(count) * float64(time.Millisecond) / float64(dt)
-	fmt.Printf("****** Summary ****** %.2fK ops/sec [%d rows in %v]\n", rps, count, dt)
+	rps := float64(p.opscount) * float64(time.Millisecond) / float64(dt)
+	fmt.Printf("****** Summary ****** %.2fK ops/sec [%d rows in %v]\n", rps, p.opscount, dt)
 
 	// Duration     time.Duration
 	// DeltaOps     int64
@@ -194,8 +186,9 @@ func (p *PerformanceMonitor) Summary() {
 	// MemUsage     uint64
 
 	if p.master == nil {
-		csv := "%Test generated on " + time.Now().Format(time.RFC1123Z) + "\n"
-		csv += "%Test Case: " + p.testname + "\n"
+		csv := "#Test generated on " + time.Now().Format(time.RFC1123Z) + "\n"
+		csv += "#Test Case: " + p.testname + "\n"
+		csv += "#Summary: " + fmt.Sprintf("%.2fK ops/sec [%d rows in %v]\n", rps, p.opscount, dt)
 		csv += "Time In Millisecond, Delta Ops, Total Ops, Ops Per Second, Cpu Load, Cpu Usage, Mem Usage\n"
 		for _, log := range p.logs {
 			csv += fmt.Sprintf("%d, %d, %d, %f, %f, %f, %d\n",
