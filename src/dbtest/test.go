@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:42:09
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 14:09:41
+* @Last Modified time: 2018-03-04 14:37:20
  */
 package dbtest
 
@@ -21,11 +21,14 @@ func DoPerfTest(dbcon string, mode string, engine string, durationInSecond int) 
 
 		nThreads := 10
 
+		// MyISAM does not support transactions
+		if engine != "MyISAM" {
+			// ------ With transaction, single connection
+			multiTheadTxWrite(dbcon, engine, testType, nThreads, duration).Summary()
+		}
+
 		// ------ No transaction, single connection
 		multiTheadWrite(dbcon, engine, testType, nThreads, duration).Summary()
-
-		// ------ With transaction, single connection
-		multiTheadTxWrite(dbcon, engine, testType, nThreads, duration).Summary()
 
 		// ------ No transaction, mmultiple connections
 		multiConnWrite(dbcon, engine, testType, 10, duration)

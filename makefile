@@ -22,6 +22,10 @@ ifeq ($(MYSQLDB),)
 MYSQLDB = "testuser:12345@/testdb"
 endif
 
+ifeq ($(DURATION),)
+DURATION = 60
+endif
+
 
 build: bin/$(PACKAGE)
 
@@ -37,19 +41,19 @@ bin/$(PACKAGE): $(GODEPS)
 
 
 write-postgres: build
-	bin/dbperf --mode write --engine postgres --db $(PGXDB)
+	bin/dbperf --mode write --engine postgres --db $(PGXDB) -duration $(DURATION)
 
 read-postgres: build
-	bin/dbperf --mode read --engine postgres --db $(PGXDB)
+	bin/dbperf --mode read --engine postgres --db $(PGXDB) -duration $(DURATION)
 
 write-innodb: build
-	bin/dbperf --mode write --engine InnoDB --db $(MYSQLDB)
+	bin/dbperf --mode write --engine InnoDB --db $(MYSQLDB) -duration $(DURATION)
 
 read-innodb: build
-	bin/dbperf --mode read --engine InnoDB --db $(MYSQLDB)
+	bin/dbperf --mode read --engine InnoDB --db $(MYSQLDB) -duration $(DURATION)
 
 write-myisam: build
-	bin/dbperf --mode write --engine MyISAM --db $(MYSQLDB) 
+	bin/dbperf --mode write --engine MyISAM --db $(MYSQLDB)  -duration $(DURATION)
 
 read-myisam: build
-	bin/dbperf --mode read --engine MyISAM  --db $(MYSQLDB)
+	bin/dbperf --mode read --engine MyISAM  --db $(MYSQLDB) -duration $(DURATION)
