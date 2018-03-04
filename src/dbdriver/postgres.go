@@ -1,8 +1,8 @@
 /*
 * @Author: ronan
 * @Date:   2018-03-04 10:01:22
-* @Last Modified by:   ronan
-* @Last Modified time: 2018-03-04 11:03:35
+* @Last Modified by:   ron
+* @Last Modified time: 2018-03-04 13:38:45
  */
 package dbdriver
 
@@ -20,7 +20,6 @@ type PostgresDriver struct {
 }
 
 type PostgresTable struct {
-	Table
 	*PostgresDriver
 	fields []string
 	types  []string

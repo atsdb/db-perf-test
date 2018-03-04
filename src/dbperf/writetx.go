@@ -1,8 +1,8 @@
 /*
 * @Author: ronan
 * @Date:   2018-03-04 10:02:54
-* @Last Modified by:   ronan
-* @Last Modified time: 2018-03-04 13:00:57
+* @Last Modified by:   ron
+* @Last Modified time: 2018-03-04 13:17:58
  */
 package dbperf
 
@@ -28,8 +28,9 @@ func (p *PerformanceMonitor) WriteTx(generator func() []interface{}, nThreads in
 		for isRunning {
 			values := generator()
 
+			var err error
 			transactionMutex.RLock()
-			err := insert(values...)
+			err = insert(values...)
 			transactionMutex.RUnlock()
 
 			atomic.AddInt64(&total, 1)
@@ -41,7 +42,7 @@ func (p *PerformanceMonitor) WriteTx(generator func() []interface{}, nThreads in
 
 		wg.Add(1)
 		for isRunning {
-			time.Sleep(time.Second * 1)
+			time.Sleep(time.Second * 10)
 			transactionMutex.Lock()
 			tx.Commit()
 			tx, insert = p.table.PrepareTxInsert()

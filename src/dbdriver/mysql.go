@@ -1,12 +1,13 @@
 /*
 * @Author: ronan
 * @Date:   2018-03-04 10:22:12
-* @Last Modified by:   ronan
-* @Last Modified time: 2018-03-04 11:03:34
+* @Last Modified by:   ron
+* @Last Modified time: 2018-03-04 13:31:40
  */
 package dbdriver
 
 import (
+	"context"
 	"database/sql"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
@@ -21,9 +22,11 @@ type MysqlDriver struct {
 
 type MysqlTable struct {
 	*MysqlDriver
-	fields []string
-	types  []string
-	table  string
+	conn    *sql.Conn
+	context context.Context
+	fields  []string
+	types   []string
+	table   string
 }
 
 func NewMysqlDriver(conn string, engine string) *MysqlDriver {
@@ -43,6 +46,8 @@ func NewMysqlDriver(conn string, engine string) *MysqlDriver {
 		db:     db,
 	}
 }
+
+/* Create a new connection for each table */
 
 func (d *MysqlDriver) Create(table string, fields []string) (Table, error) {
 
@@ -74,12 +79,20 @@ func (d *MysqlDriver) Create(table string, fields []string) (Table, error) {
 	cquery := "create table IF NOT EXISTS `" + table + "` (\n" + tablefields + "\n" + tablekeys + "\n) "
 	cquery += "ENGINE=" + d.engine + "  DEFAULT CHARSET=utf8;"
 
-	if _, err := d.db.Exec(cquery); err != nil {
+	ctx := context.Background()
+	conn, err := d.db.Conn(ctx)
+	if err != nil {
+		log.Fatal("[Create] Can not create connection: ", err)
+	}
+
+	if _, err := conn.ExecContext(ctx, cquery); err != nil {
 		log.Fatal("[Create] Can not create table: ", err, "\n\n", cquery)
 		return MysqlTable{}, err
 	}
 	return MysqlTable{
 		MysqlDriver: d,
+		conn:        conn,
+		context:     ctx,
 		fields:      fieldNames,
 		table:       table,
 		types:       fieldTypes,
@@ -100,7 +113,7 @@ func (d MysqlTable) PrepareInsert() QueryRunner {
 
 func (d MysqlTable) PrepareTxInsert() (*sql.Tx, QueryRunner) {
 
-	tx, err := d.db.Begin()
+	tx, err := d.conn.BeginTx(d.context, nil)
 	if err != nil {
 		log.Fatal("[write] can not start the transaction", err)
 	}
@@ -127,7 +140,7 @@ func (d *MysqlTable) prepareInsert(tx *sql.Tx) QueryRunner {
 	if tx != nil {
 		stmt, err = tx.Prepare(query)
 	} else {
-		stmt, err = d.db.Prepare(query)
+		stmt, err = d.conn.PrepareContext(d.context, query)
 	}
 
 	if err != nil {

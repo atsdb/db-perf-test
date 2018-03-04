@@ -1,8 +1,8 @@
 /*
 * @Author: ronan
 * @Date:   2018-03-04 10:42:09
-* @Last Modified by:   ronan
-* @Last Modified time: 2018-03-04 12:37:37
+* @Last Modified by:   ron
+* @Last Modified time: 2018-03-04 13:52:44
  */
 package dbtest
 
@@ -22,61 +22,91 @@ func DoPerfTest(dbcon string, mode string, engine string, durationInSecond int) 
 		nThreads := 10
 
 		// ------ No transaction, single connection
-
-		table, generator := testLargeTable(dbcon, engine, "notx-")
-		perf := dbperf.NewPerfMonitor(table)
-		perf.Start(fmt.Sprintf("write-no-tx/%s/%d-threads/%s", engine, nThreads, testType), duration)
-		go perf.WriteNoTx(generator, nThreads)
-		perf.Summary()
+		multiTheadWrite(dbcon, engine, testType, nThreads, duration).Summary()
 
 		// ------ With transaction, single connection
-
-		table, generator = testLargeTable(dbcon, engine, "tx-")
-		perf = dbperf.NewPerfMonitor(table)
-		perf.Start(fmt.Sprintf("write-tx/%s/%d-threads/%s", engine, nThreads, testType), duration)
-		go perf.WriteTx(generator, nThreads)
-		perf.Summary()
+		multiTheadTxWrite(dbcon, engine, testType, nThreads, duration).Summary()
 
 		// ------ No transaction, mmultiple connections
+		multiConnWrite(dbcon, engine, testType, 10, duration)
 
-		nConnections := 10
-		mons := make([]*dbperf.PerformanceMonitor, nConnections)
-		for i := 0; i < nConnections; i++ {
-			table, generator := testLargeTable(dbcon, engine, fmt.Sprintf("conn%d-", i))
-			perf := dbperf.NewPerfMonitor(table)
-			mons[i] = perf
-			if i > 0 {
-				perf.LinkMaster(mons[0])
-			}
-
-			nThreads := 1
-			perf.Start(fmt.Sprintf("write-no-tx/%s/%d-connections/%s", engine, nConnections, testType), duration)
-			go perf.WriteNoTx(generator, nThreads)
-
-		}
-
-		for i := 0; i < nConnections; i++ {
-			mons[i].Summary()
-		}
 	}
 
 	if mode == "read" {
 
-		table, generator := testLargeTable(dbcon, engine, "notx-")
-		perf := dbperf.NewPerfMonitor(table)
-		for perf.NRows() < 50*1000*1000 {
-			nThreads := 10
-			log.Printf("[read] There are not enough rows (%d) in the DB - generating few now...\n", perf.NRows())
-			perf.Start(fmt.Sprintf("write-no-tx/%s/%d-threads/%s", engine, nThreads, testType), time.Minute)
-			go perf.WriteTx(generator, nThreads)
-			perf.Finish()
+		for nThreads := 1; nThreads < 10; nThreads++ {
+			multiTheadRead(dbcon, engine, testType, nThreads).Summary()
 		}
-
-		perf.Start("read", duration)
-		nrows := perf.NRows()
-		go perf.Read(0, nrows+1)
-		perf.Summary()
 
 	}
 
+}
+
+func multiTheadWrite(dbcon string, engine string, testType string, nThreads int, duration time.Duration) *dbperf.PerformanceMonitor {
+
+	table, generator := testTable(dbcon, engine, testType, "notx-")
+	perf := dbperf.NewPerfMonitor(table)
+	perf.Start(fmt.Sprintf("write-no-tx/%s/%d-threads/%s", engine, nThreads, testType), duration)
+	go perf.WriteNoTx(generator, nThreads)
+	perf.Finish()
+	return perf
+
+}
+
+func multiTheadTxWrite(dbcon string, engine string, testType string, nThreads int, duration time.Duration) *dbperf.PerformanceMonitor {
+
+	table, generator := testTable(dbcon, engine, testType, "tx-")
+	perf := dbperf.NewPerfMonitor(table)
+	perf.Start(fmt.Sprintf("write-tx/%s/%d-threads/%s", engine, nThreads, testType), duration)
+	go perf.WriteTx(generator, nThreads)
+	perf.Finish()
+	return perf
+
+}
+
+func multiConnWrite(dbcon string, engine string, testType string, nConnections int, duration time.Duration) *dbperf.PerformanceMonitor {
+
+	mons := make([]*dbperf.PerformanceMonitor, nConnections)
+	for i := 0; i < nConnections; i++ {
+
+		table, generator := testTable(dbcon, engine, testType, fmt.Sprintf("conn%d-", i))
+		perf := dbperf.NewPerfMonitor(table)
+		mons[i] = perf
+		if i > 0 {
+			perf.LinkMaster(mons[0])
+		}
+
+		nThreads := 1
+		perf.Start(fmt.Sprintf("write-no-tx/%s/%d-connections/%s", engine, nConnections, testType), duration)
+		go perf.WriteNoTx(generator, nThreads)
+
+	}
+
+	for i := 0; i < nConnections; i++ {
+		mons[i].Finish()
+	}
+
+	return mons[0]
+
+}
+
+func multiTheadRead(dbcon string, engine string, testType string, nThreads int) *dbperf.PerformanceMonitor {
+
+	table, _ := testTable(dbcon, engine, testType, "notx-")
+	perf := dbperf.NewPerfMonitor(table)
+	for perf.NRows() < 10*1000*1000 {
+		log.Printf("[read] There are not enough rows (%d) in the DB - generating few now...\n", perf.NRows())
+		multiConnWrite(dbcon, engine, testType, 10, time.Minute)
+	}
+
+	perf.Start(fmt.Sprintf("read/%d-threads", nThreads), time.Minute)
+	nrows := perf.NRows()
+	start := int64(0)
+	for n := 0; n < nThreads; n++ {
+		end := (nrows + 1) / int64(nThreads)
+		go perf.Read(start, end)
+		start = end
+	}
+	perf.Finish()
+	return perf
 }

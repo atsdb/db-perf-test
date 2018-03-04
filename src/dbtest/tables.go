@@ -1,15 +1,28 @@
 /*
 * @Author: ronan
 * @Date:   2018-03-04 10:39:07
-* @Last Modified by:   ronan
-* @Last Modified time: 2018-03-04 11:03:19
+* @Last Modified by:   ron
+* @Last Modified time: 2018-03-04 13:44:18
  */
 package dbtest
 
 import (
 	"dbdriver"
+	"log"
 	"math/rand"
 )
+
+func testTable(dbcon string, engine string, ttype string, prefix string) (dbdriver.Table, func() []interface{}) {
+	switch ttype {
+	case "large-table":
+		return testLargeTable(dbcon, engine, prefix)
+	case "light-table":
+		return testLightTable(dbcon, engine, prefix)
+	default:
+		log.Fatal("Unknown test table configuration: ", ttype)
+	}
+	return nil, nil
+}
 
 func testLargeTable(dbcon string, engine string, prefix string) (dbdriver.Table, func() []interface{}) {
 

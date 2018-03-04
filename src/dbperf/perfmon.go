@@ -1,8 +1,8 @@
 /*
 * @Author: ronan
 * @Date:   2018-03-04 10:41:36
-* @Last Modified by:   ronan
-* @Last Modified time: 2018-03-04 13:01:31
+* @Last Modified by:   ron
+* @Last Modified time: 2018-03-04 13:41:22
  */
 package dbperf
 
@@ -95,8 +95,6 @@ func (p *PerformanceMonitor) LinkMaster(master *PerformanceMonitor) {
 
 func (p *PerformanceMonitor) Start(what string, duration time.Duration) {
 
-	fmt.Printf("[=============== %s/%v ===============]\n", what, duration)
-
 	p.startTime = time.Now()
 	p.running = true
 	p.opscount = 0
@@ -106,6 +104,7 @@ func (p *PerformanceMonitor) Start(what string, duration time.Duration) {
 	p.logs = make([]PerfLogEntry, 0)
 
 	if p.master == nil {
+		fmt.Printf("[=============== %s/%v ===============]\n", what, duration)
 		go p.periodicReport()
 	}
 }
