@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:02:54
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 13:17:58
+* @Last Modified time: 2018-03-04 18:00:57
  */
 package dbperf
 
@@ -42,7 +42,7 @@ func (p *PerformanceMonitor) WriteTx(generator func() []interface{}, nThreads in
 
 		wg.Add(1)
 		for isRunning {
-			time.Sleep(time.Second * 10)
+			time.Sleep(time.Second * 1)
 			transactionMutex.Lock()
 			tx.Commit()
 			tx, insert = p.table.PrepareTxInsert()

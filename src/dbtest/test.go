@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:42:09
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 17:47:08
+* @Last Modified time: 2018-03-04 18:00:43
  */
 package dbtest
 
@@ -88,7 +88,7 @@ func multiConnWrite(dbcon string, engine string, testType string, nConnections i
 
 		nThreads := 1
 		perf.Start(fmt.Sprintf("write-no-tx/%s/%d-connections/%s", engine, nConnections, testType), duration)
-		go perf.WriteNoTx(generator, nThreads)
+		go perf.WriteTx(generator, nThreads)
 
 	}
 
