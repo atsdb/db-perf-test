@@ -26,6 +26,13 @@ ifeq ($(DURATION),)
 DURATION = 60
 endif
 
+ifeq ($(TABLE),)
+#Possible choices: light, large
+TABLE = light
+endif
+
+#--------------------------------------------------
+
 
 build: bin/$(PACKAGE)
 
@@ -41,19 +48,19 @@ bin/$(PACKAGE): $(GODEPS)
 
 
 write-postgres: build
-	bin/dbperf --mode write --engine postgres --db $(PGXDB) -duration $(DURATION)
+	bin/dbperf --mode write --engine postgres --db $(PGXDB) --duration $(DURATION) --table $(TABLE)
 
 read-postgres: build
-	bin/dbperf --mode read --engine postgres --db $(PGXDB) -duration $(DURATION)
+	bin/dbperf --mode read --engine postgres --db $(PGXDB) --duration $(DURATION) --table $(TABLE)
 
 write-innodb: build
-	bin/dbperf --mode write --engine InnoDB --db $(MYSQLDB) -duration $(DURATION)
+	bin/dbperf --mode write --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table $(TABLE)
 
 read-innodb: build
-	bin/dbperf --mode read --engine InnoDB --db $(MYSQLDB) -duration $(DURATION)
+	bin/dbperf --mode read --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table $(TABLE)
 
 write-myisam: build
-	bin/dbperf --mode write --engine MyISAM --db $(MYSQLDB)  -duration $(DURATION)
+	bin/dbperf --mode write --engine MyISAM --db $(MYSQLDB)  --duration $(DURATION) --table $(TABLE)
 
 read-myisam: build
-	bin/dbperf --mode read --engine MyISAM  --db $(MYSQLDB) -duration $(DURATION)
+	bin/dbperf --mode read --engine MyISAM  --db $(MYSQLDB) --duration $(DURATION) --table $(TABLE)

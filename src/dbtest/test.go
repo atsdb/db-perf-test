@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:42:09
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 14:37:20
+* @Last Modified time: 2018-03-04 14:54:24
  */
 package dbtest
 
@@ -13,9 +13,8 @@ import (
 	"time"
 )
 
-func DoPerfTest(dbcon string, mode string, engine string, durationInSecond int) {
+func DoPerfTest(dbcon string, mode string, engine string, table string, durationInSecond int) {
 
-	testType := "large-table"
 	duration := time.Second * time.Duration(durationInSecond)
 	if mode == "write" {
 
@@ -24,21 +23,21 @@ func DoPerfTest(dbcon string, mode string, engine string, durationInSecond int) 
 		// MyISAM does not support transactions
 		if engine != "MyISAM" {
 			// ------ With transaction, single connection
-			multiTheadTxWrite(dbcon, engine, testType, nThreads, duration).Summary()
+			multiTheadTxWrite(dbcon, engine, table, nThreads, duration).Summary()
 		}
 
 		// ------ No transaction, single connection
-		multiTheadWrite(dbcon, engine, testType, nThreads, duration).Summary()
+		multiTheadWrite(dbcon, engine, table, nThreads, duration).Summary()
 
 		// ------ No transaction, mmultiple connections
-		multiConnWrite(dbcon, engine, testType, 10, duration)
+		multiConnWrite(dbcon, engine, table, 10, duration)
 
 	}
 
 	if mode == "read" {
 
 		for nThreads := 1; nThreads < 5; nThreads++ {
-			multiTheadRead(dbcon, engine, testType, nThreads).Summary()
+			multiTheadRead(dbcon, engine, table, nThreads).Summary()
 		}
 
 	}

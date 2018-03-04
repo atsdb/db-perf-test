@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:39:07
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 13:44:18
+* @Last Modified time: 2018-03-04 14:54:31
  */
 package dbtest
 
@@ -14,9 +14,9 @@ import (
 
 func testTable(dbcon string, engine string, ttype string, prefix string) (dbdriver.Table, func() []interface{}) {
 	switch ttype {
-	case "large-table":
+	case "large":
 		return testLargeTable(dbcon, engine, prefix)
-	case "light-table":
+	case "light":
 		return testLightTable(dbcon, engine, prefix)
 	default:
 		log.Fatal("Unknown test table configuration: ", ttype)
