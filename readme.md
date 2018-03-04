@@ -36,7 +36,6 @@ Two table configuration are defined:
 
    - `make write-innodb` 
    - `make read-innodb` 
-
    - `make write-myisam` 
    - `make read-myisam` 
 
