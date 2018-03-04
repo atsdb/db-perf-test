@@ -47,6 +47,18 @@ bin/$(PACKAGE): $(GODEPS)
 #--------------------------------------------------
 
 
+run-mysql: build
+	bin/dbperf --mode write --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table light
+	bin/dbperf --mode read --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table light
+	bin/dbperf --mode write --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table light
+	bin/dbperf --mode read --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table light
+	bin/dbperf --mode write --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table large
+	bin/dbperf --mode read --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table large
+	bin/dbperf --mode write --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table large
+	bin/dbperf --mode read --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table large
+
+#--------------------------------------------------
+
 write-postgres: build
 	bin/dbperf --mode write --engine postgres --db $(PGXDB) --duration $(DURATION) --table $(TABLE)
 
