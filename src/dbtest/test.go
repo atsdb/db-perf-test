@@ -2,41 +2,42 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:42:09
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 14:54:24
+* @Last Modified time: 2018-03-04 17:43:27
  */
 package dbtest
 
 import (
+	"dbdriver"
 	"dbperf"
 	"fmt"
 	"log"
 	"time"
 )
 
-func DoPerfTest(dbcon string, mode string, engine string, table string, durationInSecond int) {
+func DoPerfTest(dbcon string, mode string, engine string, table string, durationInSecond int, concurrent int) {
 
 	duration := time.Second * time.Duration(durationInSecond)
-	if mode == "write" {
+	switch mode {
 
-		nThreads := 10
-
+	case "write":
 		// MyISAM does not support transactions
 		if engine != "MyISAM" {
 			// ------ With transaction, single connection
-			multiTheadTxWrite(dbcon, engine, table, nThreads, duration).Summary()
+			multiTheadTxWrite(dbcon, engine, table, concurrent, duration).Summary()
 		}
 
 		// ------ No transaction, single connection
-		multiTheadWrite(dbcon, engine, table, nThreads, duration).Summary()
+		multiTheadWrite(dbcon, engine, table, concurrent, duration).Summary()
 
 		// ------ No transaction, mmultiple connections
-		multiConnWrite(dbcon, engine, table, 10, duration)
+		multiConnWrite(dbcon, engine, table, concurrent, duration)
 
-	}
+	case "write-multi-conn":
+		multiConnWrite(dbcon, engine, table, concurrent, duration)
 
-	if mode == "read" {
+	case "read":
 
-		for nThreads := 1; nThreads < 5; nThreads++ {
+		for nThreads := 1; nThreads < concurrent; nThreads++ {
 			multiTheadRead(dbcon, engine, table, nThreads).Summary()
 		}
 
@@ -51,6 +52,7 @@ func multiTheadWrite(dbcon string, engine string, testType string, nThreads int,
 	perf.Start(fmt.Sprintf("write-no-tx/%s/%d-threads/%s", engine, nThreads, testType), duration)
 	go perf.WriteNoTx(generator, nThreads)
 	perf.Finish()
+	table.Close()
 	return perf
 
 }
@@ -62,6 +64,7 @@ func multiTheadTxWrite(dbcon string, engine string, testType string, nThreads in
 	perf.Start(fmt.Sprintf("write-tx/%s/%d-threads/%s", engine, nThreads, testType), duration)
 	go perf.WriteTx(generator, nThreads)
 	perf.Finish()
+	table.Close()
 	return perf
 
 }
@@ -69,10 +72,12 @@ func multiTheadTxWrite(dbcon string, engine string, testType string, nThreads in
 func multiConnWrite(dbcon string, engine string, testType string, nConnections int, duration time.Duration) *dbperf.PerformanceMonitor {
 
 	mons := make([]*dbperf.PerformanceMonitor, nConnections)
+	tables := make([]dbdriver.Table, nConnections)
 	for i := 0; i < nConnections; i++ {
 
 		table, generator := testTable(dbcon, engine, testType, fmt.Sprintf("conn%d-", i))
 		perf := dbperf.NewPerfMonitor(table)
+		tables[i] = table
 		mons[i] = perf
 		if i > 0 {
 			perf.LinkMaster(mons[0])
@@ -86,6 +91,7 @@ func multiConnWrite(dbcon string, engine string, testType string, nConnections i
 
 	for i := 0; i < nConnections; i++ {
 		mons[i].Finish()
+		tables[i].Close()
 	}
 
 	return mons[0]

@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:01:22
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 13:38:45
+* @Last Modified time: 2018-03-04 17:39:26
  */
 package dbdriver
 
@@ -90,6 +90,10 @@ func (d PostgresTable) Name() string {
 
 func (d PostgresTable) DB() *sql.DB {
 	return d.db
+}
+
+func (d PostgresTable) Close() {
+	d.db.Close()
 }
 
 func (d PostgresTable) PrepareInsert() QueryRunner {

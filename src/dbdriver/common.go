@@ -1,8 +1,8 @@
 /*
 * @Author: ronan
 * @Date:   2018-03-04 09:39:00
-* @Last Modified by:   ronan
-* @Last Modified time: 2018-03-04 11:03:33
+* @Last Modified by:   ron
+* @Last Modified time: 2018-03-04 17:40:18
  */
 package dbdriver
 
@@ -23,6 +23,9 @@ type Table interface {
 
 	/* Used for executing random queries */
 	DB() *sql.DB
+
+	/* close the DB connection */
+	Close()
 }
 
 type Driver interface {

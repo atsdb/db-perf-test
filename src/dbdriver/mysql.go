@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:22:12
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 14:24:44
+* @Last Modified time: 2018-03-04 17:39:10
  */
 package dbdriver
 
@@ -96,6 +96,10 @@ func (d MysqlTable) Name() string {
 
 func (d MysqlTable) DB() *sql.DB {
 	return d.db
+}
+
+func (d MysqlTable) Close() {
+	d.db.Close()
 }
 
 func (d MysqlTable) PrepareInsert() QueryRunner {
