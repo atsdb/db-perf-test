@@ -2,33 +2,32 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:22:12
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 17:39:10
+* @Last Modified time: 2018-03-06 12:25:22
  */
 package dbdriver
 
 import (
-	"context"
+	"crypto/md5"
 	"database/sql"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
+	"io"
 	"log"
 	"strings"
 )
 
 type MysqlDriver struct {
-	db     *sql.DB
-	engine string
+	mysqldb *sql.DB
+	engine  string
 }
 
 type MysqlTable struct {
-	*MysqlDriver
-	context context.Context
-	fields  []string
-	types   []string
-	table   string
+	GenericTable
+	MysqlDriver
 }
 
-func NewMysqlDriver(conn string, engine string) *MysqlDriver {
+func NewMysqlDriver(conn string, engine string) MysqlDriver {
 
 	db, err1 := sql.Open("mysql", conn)
 	if err1 != nil {
@@ -40,20 +39,21 @@ func NewMysqlDriver(conn string, engine string) *MysqlDriver {
 		log.Fatal("[atsdb] Unable to open DB to '"+conn+"': ", e1)
 	}
 
-	return &MysqlDriver{
-		engine: engine,
-		db:     db,
+	return MysqlDriver{
+		engine:  engine,
+		mysqldb: db,
 	}
 }
 
 /* Create a new connection for each table */
 
-func (d *MysqlDriver) Create(table string, fields []string) (Table, error) {
+func (d MysqlDriver) Create(table string, fields []string) (Table, error) {
 
 	fieldTypes := make([]string, 0)
 	fieldNames := make([]string, 0)
 	tablefields := ""
 	tablekeys := ""
+	md5 := md5.New()
 	for i, field := range fields {
 		if i != 0 {
 			tablefields += ",\n"
@@ -66,6 +66,8 @@ func (d *MysqlDriver) Create(table string, fields []string) (Table, error) {
 			tablekeys += ",PRIMARY KEY (`" + p[0] + "`)"
 		case "int":
 			tablefields += "int"
+		case "int16":
+			tablefields += "smallint"
 		case "string":
 			tablefields += "varchar(500)"
 		default:
@@ -73,33 +75,38 @@ func (d *MysqlDriver) Create(table string, fields []string) (Table, error) {
 		}
 		fieldNames = append(fieldNames, p[0])
 		fieldTypes = append(fieldTypes, p[1])
+
+		if len(p) > 2 {
+			switch p[2] {
+			case "index":
+				tablekeys += ",KEY (`" + p[0] + "`)"
+
+			default:
+				log.Fatal("Unknown field qualifier " + field)
+			}
+		}
+
+		io.WriteString(md5, field)
 	}
+
+	table += "-" + fmt.Sprintf("%x", md5.Sum(nil))[:4]
 
 	cquery := "create table IF NOT EXISTS `" + table + "` (\n" + tablefields + "\n" + tablekeys + "\n) "
 	cquery += "ENGINE=" + d.engine + "  DEFAULT CHARSET=utf8;"
 
-	if _, err := d.db.Exec(cquery); err != nil {
+	if _, err := d.mysqldb.Exec(cquery); err != nil {
 		log.Fatal("[Create] Can not create table: ", err, "\n\n", cquery)
 		return MysqlTable{}, err
 	}
 	return MysqlTable{
 		MysqlDriver: d,
-		fields:      fieldNames,
-		table:       table,
-		types:       fieldTypes,
+		GenericTable: GenericTable{
+			db:     d.mysqldb,
+			fields: fieldNames,
+			table:  table,
+			types:  fieldTypes,
+		},
 	}, nil
-}
-
-func (d MysqlTable) Name() string {
-	return "`" + d.table + "`"
-}
-
-func (d MysqlTable) DB() *sql.DB {
-	return d.db
-}
-
-func (d MysqlTable) Close() {
-	d.db.Close()
 }
 
 func (d MysqlTable) PrepareInsert() QueryRunner {

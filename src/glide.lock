@@ -1,5 +1,5 @@
 hash: 3276847e0fc72d85307137f0903a6fea24faa2bbec8373565fefc41a564c09cd
-updated: 2018-03-04T11:21:44.124227542+08:00
+updated: 2018-03-06T09:21:57.690601604+08:00
 imports:
 - name: github.com/go-ole/go-ole
   version: a1ec82a652ebc7e784d7df887cfb31061aeabbcc
@@ -11,11 +11,19 @@ imports:
   version: e4af84aab01e159ca479940dbde304519e8e8811
   subpackages:
   - oid
+- name: github.com/mattn/go-colorable
+  version: d228849504861217f796da67fae4f6e347643f15
+- name: github.com/mattn/go-isatty
+  version: 0360b2af4f38e8d38c7fce2a9f4e702702d73a39
+- name: github.com/mgutz/ansi
+  version: 9520e82c474b0a04dd04f8a40959027271bab992
 - name: github.com/shirou/gopsutil
   version: 5776ff9c7c5d063d574ef53d740f75c68b448e53
   subpackages:
+  - cpu
   - internal/common
   - load
+  - mem
 - name: github.com/StackExchange/wmi
   version: 5d049714c4a64225c3c79a7cf7d02f7fb5b96338
 - name: golang.org/x/sys

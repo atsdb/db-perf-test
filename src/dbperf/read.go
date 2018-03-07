@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:21:02
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 14:09:15
+* @Last Modified time: 2018-03-06 16:07:14
  */
 package dbperf
 
@@ -17,7 +17,7 @@ func (p *PerformanceMonitor) Read(from int64, to int64) {
 	p.testWG.Add(1)
 
 	where := fmt.Sprintf("where idx >=%d and idx<%d", from, to)
-	query := "select idx, value from " + p.table.Name() + " " + where
+	query := "select * from " + p.table.Name() + " " + where
 	stmt, err := p.table.DB().Prepare(query)
 	if err != nil {
 		log.Fatal("[Read] Can not prepare query: ", err)
@@ -39,11 +39,22 @@ func (p *PerformanceMonitor) Read(from int64, to int64) {
 		}
 
 		var idx int64
-		var name interface{}
+		var value interface{}
 		nreads := 0
+		params := []interface{}{}
+		for _, name := range p.table.Columns() {
+			if name == "value" {
+				params = append(params, &value)
+			} else if name == "idx" {
+				params = append(params, &idx)
+			} else {
+				var i interface{}
+				params = append(params, &i)
+			}
+		}
 		for rows.Next() {
-			e := rows.Scan(&idx, &name)
-			id2m[idx-from] = name
+			e := rows.Scan(params...)
+			id2m[idx-from] = value
 			nreads += 1
 			p.Inc(e)
 			if nreads >= 1000*1000 {

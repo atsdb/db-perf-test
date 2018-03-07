@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:02:54
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 18:00:57
+* @Last Modified time: 2018-03-06 17:50:14
  */
 package dbperf
 
@@ -25,6 +25,7 @@ func (p *PerformanceMonitor) WriteTx(generator func() []interface{}, nThreads in
 	transactionMutex := &sync.RWMutex{}
 	insertThread := func() {
 
+		wg.Add(1)
 		for isRunning {
 			values := generator()
 
@@ -36,6 +37,8 @@ func (p *PerformanceMonitor) WriteTx(generator func() []interface{}, nThreads in
 			atomic.AddInt64(&total, 1)
 			p.Inc(err)
 		}
+		wg.Done()
+
 	}
 
 	commitThread := func() {
@@ -43,6 +46,7 @@ func (p *PerformanceMonitor) WriteTx(generator func() []interface{}, nThreads in
 		wg.Add(1)
 		for isRunning {
 			time.Sleep(time.Second * 1)
+
 			transactionMutex.Lock()
 			tx.Commit()
 			tx, insert = p.table.PrepareTxInsert()
@@ -56,6 +60,7 @@ func (p *PerformanceMonitor) WriteTx(generator func() []interface{}, nThreads in
 	for i := 0; i < nThreads; i++ {
 		go insertThread()
 	}
+
 	time.Sleep(p.duration)
 
 	isRunning = false

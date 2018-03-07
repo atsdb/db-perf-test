@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 09:39:00
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 17:40:18
+* @Last Modified time: 2018-03-06 11:58:54
  */
 package dbdriver
 
@@ -26,6 +26,9 @@ type Table interface {
 
 	/* close the DB connection */
 	Close()
+
+	/* Return the column names */
+	Columns() []string
 }
 
 type Driver interface {

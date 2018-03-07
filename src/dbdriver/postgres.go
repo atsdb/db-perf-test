@@ -2,31 +2,31 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:01:22
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-04 17:39:26
+* @Last Modified time: 2018-03-06 17:21:44
  */
 package dbdriver
 
 import (
+	"crypto/md5"
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
+	"io"
 	"log"
 	"strings"
 )
 
 type PostgresDriver struct {
-	db *sql.DB
+	pgxdb *sql.DB
 }
 
 type PostgresTable struct {
-	*PostgresDriver
-	fields []string
-	types  []string
-	table  string
+	GenericTable
+	PostgresDriver
 }
 
-func NewPostgresDriver(conn string) *PostgresDriver {
+func NewPostgresDriver(conn string) PostgresDriver {
 
 	db, err1 := sql.Open("postgres", conn)
 	if err1 != nil {
@@ -38,17 +38,25 @@ func NewPostgresDriver(conn string) *PostgresDriver {
 		log.Fatal("[atsdb] Unable to open DB to '"+conn+"': ", e1)
 	}
 
-	return &PostgresDriver{
-		db: db,
+	return PostgresDriver{
+		pgxdb: db,
 	}
 }
 
-func (d *PostgresDriver) Create(table string, fields []string) (Table, error) {
+func (d PostgresDriver) Create(table string, fields []string) (Table, error) {
 
 	fieldTypes := make([]string, 0)
 	fieldNames := make([]string, 0)
 	tablefields := ""
 	tablekeys := ""
+	postquery := ""
+
+	md5 := md5.New()
+	for _, field := range fields {
+		io.WriteString(md5, field)
+	}
+	table += "-" + fmt.Sprintf("%x", md5.Sum(nil))[:4]
+
 	for i, field := range fields {
 		if i != 0 {
 			tablefields += ",\n"
@@ -61,6 +69,8 @@ func (d *PostgresDriver) Create(table string, fields []string) (Table, error) {
 			tablekeys += ",PRIMARY KEY (\"" + p[0] + "\")"
 		case "int":
 			tablefields += "integer"
+		case "int16":
+			tablefields += "smallint"
 		case "string":
 			tablefields += "varchar(500)"
 		default:
@@ -68,32 +78,34 @@ func (d *PostgresDriver) Create(table string, fields []string) (Table, error) {
 		}
 		fieldNames = append(fieldNames, p[0])
 		fieldTypes = append(fieldTypes, p[1])
-		table += "-" + field
-	}
-	cquery := "create table IF NOT EXISTS \"" + table + "\" (\n" + tablefields + "\n" + tablekeys + "\n); "
 
-	if _, err := d.db.Exec(cquery); err != nil {
+		if len(p) > 2 {
+			switch p[2] {
+			case "index":
+				postquery += `CREATE INDEX ON "` + table + `"("` + p[0] + `");`
+
+			default:
+				log.Fatal("Unknown field qualifier " + field)
+			}
+		}
+	}
+
+	cquery := "create table IF NOT EXISTS \"" + table + "\" (\n" + tablefields + "\n" + tablekeys + "\n); "
+	cquery += postquery
+
+	if _, err := d.pgxdb.Exec(cquery); err != nil {
 		log.Fatal("[Create] Can not create table: ", err, "\n", cquery)
 		return PostgresTable{}, err
 	}
 	return PostgresTable{
 		PostgresDriver: d,
-		fields:         fieldNames,
-		table:          table,
-		types:          fieldTypes,
+		GenericTable: GenericTable{
+			db:     d.pgxdb,
+			fields: fieldNames,
+			table:  table,
+			types:  fieldTypes,
+		},
 	}, nil
-}
-
-func (d PostgresTable) Name() string {
-	return `"` + d.table + `"`
-}
-
-func (d PostgresTable) DB() *sql.DB {
-	return d.db
-}
-
-func (d PostgresTable) Close() {
-	d.db.Close()
 }
 
 func (d PostgresTable) PrepareInsert() QueryRunner {
