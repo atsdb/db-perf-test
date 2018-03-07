@@ -31,17 +31,16 @@ Three different configurations for the tables are defined (see file `dbtest/conf
 
  * Write
 
-     - Insert to a table with 10 concurrent threads without transaction
-     - Insert to a table with 10 concurrent insrrt thread using a transaction flushed every minute (only one thread for the transaction flush)
-     - Insert to a table with 10 concurrent connections without transaction
+     - Insert intto a table with 10 concurrent threads without transaction
+     - Insert intto a table with 10 concurrent threads using a transaction flushed every minute (only one thread for the transaction flush).
+     - Insert into 10 tables concurrently and one transaction for each table.
 
   * Read 
 
       - Read the whole table data with one single thread
       - Read the table data with 2 theads: the first threads read the first half of the values, and the second thread reads the second half.
       - Read the table data with 3 and more theads: split the tables in as many chuncks as there are threads, and read concurrently.
-
-      - The precondition for the read test is to fill-in the table with at 100 million rows.
+      - The precondition for the read test is to fill-in the table with at least 100 million rows. This tool will take care of filling-in the table if needed.
 
 ## Command Line Usage
 
