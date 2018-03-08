@@ -5,6 +5,8 @@ This tool can be used to benchmark various Database performance under "no-sql" u
 
 [![Build Status](https://travis-ci.org/atsdb/db-perf-test.svg?branch=master)](https://travis-ci.org/atsdb/db-perf-test)
 
+For the full explanation, check https://eadalabs.com/benchmarking-mysql-postgres-and-mongodb-performance-in-nosql-mode/
+
 ## Database/Table Configuration
 
 The database are used in "no-sql" mode, i.e. without any join between table. The objective of the test is to insert as fast a possible into the table, and read-back as fast as possible.
