@@ -1,5 +1,5 @@
 hash: 3276847e0fc72d85307137f0903a6fea24faa2bbec8373565fefc41a564c09cd
-updated: 2018-03-06T09:21:57.690601604+08:00
+updated: 2018-03-07T18:16:10.214615549+08:00
 imports:
 - name: github.com/go-ole/go-ole
   version: a1ec82a652ebc7e784d7df887cfb31061aeabbcc
@@ -11,6 +11,8 @@ imports:
   version: e4af84aab01e159ca479940dbde304519e8e8811
   subpackages:
   - oid
+- name: github.com/mailru/go-clickhouse
+  version: 536b539984b86b94dda53938b3dd73de92c55da8
 - name: github.com/mattn/go-colorable
   version: d228849504861217f796da67fae4f6e347643f15
 - name: github.com/mattn/go-isatty
