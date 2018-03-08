@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:22:12
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-06 12:25:22
+* @Last Modified time: 2018-03-07 15:19:50
  */
 package dbdriver
 
@@ -107,6 +107,10 @@ func (d MysqlDriver) Create(table string, fields []string) (Table, error) {
 			types:  fieldTypes,
 		},
 	}, nil
+}
+
+func (d MysqlTable) Name() string {
+	return "`" + d.table + "`"
 }
 
 func (d MysqlTable) PrepareInsert() QueryRunner {

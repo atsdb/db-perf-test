@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:01:22
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-06 17:21:44
+* @Last Modified time: 2018-03-07 11:57:16
  */
 package dbdriver
 
@@ -106,6 +106,10 @@ func (d PostgresDriver) Create(table string, fields []string) (Table, error) {
 			types:  fieldTypes,
 		},
 	}, nil
+}
+
+func (d PostgresTable) Name() string {
+	return `"` + d.table + `"`
 }
 
 func (d PostgresTable) PrepareInsert() QueryRunner {

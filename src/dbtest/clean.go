@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:42:09
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-06 11:02:01
+* @Last Modified time: 2018-03-07 11:56:19
  */
 package dbtest
 
@@ -34,12 +34,19 @@ func DoClean(dbcon string, engine string) {
 
 func cleanupTable(table dbdriver.Table) {
 	query := "select max(idx) from " + table.Name()
-	if row := table.DB().QueryRow(query); row != nil {
+	if rows, err := table.DB().Query(query); err != nil {
+		log.Printf("Table %-42s: does not exists [%s]: (%v)\n", table.Name(), query, err)
+	} else if rows != nil {
+		defer rows.Close()
 		var nrows int64
-		row.Scan(&nrows)
-		if nrows > 0 {
-			log.Printf("Table %-42s: %d rows\n", table.Name(), nrows)
-			table.DB().Exec("drop table " + table.Name())
+		if rows.Next() {
+			rows.Scan(&nrows)
+			if nrows > 0 {
+				log.Printf("Table %-42s: %d rows\n", table.Name(), nrows)
+				if _, err := table.DB().Exec("drop table " + table.Name()); err != nil {
+					log.Printf("Table %-42s: can not delete (%v)\n", table.Name(), err)
+				}
+			}
 		}
 	}
 

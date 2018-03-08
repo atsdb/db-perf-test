@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:42:09
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-06 16:22:11
+* @Last Modified time: 2018-03-07 11:47:33
  */
 package dbtest
 
@@ -31,7 +31,12 @@ func DoPerfTest(dbcon string, mode string, engine string, table string, duration
 		}
 
 		// ------ With transaction, single connection, mmultiple table
-		multiTableTxWrite(dbcon, engine, table, ntables, duration)
+		multiTableTxWrite(dbcon, engine, table, ntables, duration).Summary()
+
+	case "write-multi-table":
+
+		// ------ With transaction, single connection, mmultiple table
+		multiTableTxWrite(dbcon, engine, table, ntables, duration).Summary()
 
 	case "read":
 

@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 09:39:00
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-06 12:14:43
+* @Last Modified time: 2018-03-07 15:19:53
  */
 package dbdriver
 
@@ -16,10 +16,6 @@ type GenericTable struct {
 	fields []string
 	types  []string
 	table  string
-}
-
-func (d GenericTable) Name() string {
-	return "`" + d.table + "`"
 }
 
 func (d GenericTable) DB() *sql.DB {

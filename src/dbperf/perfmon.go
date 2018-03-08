@@ -2,7 +2,7 @@
 * @Author: ronan
 * @Date:   2018-03-04 10:41:36
 * @Last Modified by:   ron
-* @Last Modified time: 2018-03-06 17:57:25
+* @Last Modified time: 2018-03-08 08:37:50
  */
 package dbperf
 
@@ -15,13 +15,24 @@ import (
 	"github.com/shirou/gopsutil/mem"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 )
 
+type testState int
+
+const (
+	warming testState = iota
+	running
+	ending
+	stopped
+)
+
 type PerfLogEntry struct {
+	EntryCount   int
 	Duration     time.Duration
 	DeltaOps     int64
 	TotalOps     int64
@@ -32,21 +43,22 @@ type PerfLogEntry struct {
 }
 
 type PerformanceMonitor struct {
-	table    dbdriver.Table
-	testWG   *sync.WaitGroup
-	reportWG *sync.WaitGroup
-	mutex    *sync.Mutex
-
+	table           dbdriver.Table
+	testWG          *sync.WaitGroup
+	reportWG        *sync.WaitGroup
+	mutex           *sync.Mutex
+	state           testState
 	startTime       time.Time
+	startRunTime    time.Time
 	runningDuration time.Duration
 
-	running  bool
-	active   bool
 	opscount int64
 	testname string
 	duration time.Duration
 	logs     []PerfLogEntry
 	master   *PerformanceMonitor
+
+	stats PerfLogEntry
 }
 
 func NewPerfMonitor(table dbdriver.Table) *PerformanceMonitor {
@@ -94,13 +106,15 @@ func (p *PerformanceMonitor) LinkMaster(master *PerformanceMonitor) {
 
 func (p *PerformanceMonitor) Start(what string, duration time.Duration) {
 
+	p.startRunTime = time.Now()
 	p.startTime = time.Now()
-	p.running = true
-	p.active = false
+	p.state = warming
 	p.opscount = 0
 	p.testname = what
 	p.duration = duration
 	p.logs = make([]PerfLogEntry, 0)
+	p.state = warming
+	p.stats = PerfLogEntry{}
 
 	if p.master == nil {
 		nrows := p.NRows()
@@ -108,29 +122,34 @@ func (p *PerformanceMonitor) Start(what string, duration time.Duration) {
 			ansi.Color(what, "green"), duration, nrows)
 		go p.periodicReport()
 
+		/* Monitor the CPU load for 5 seconds before starting */
+		time.Sleep(time.Second * 5)
 	}
 
-	/* Monitor the CPU load for 10 seconds before starting */
-	time.Sleep(time.Second * 10)
-	p.active = true
-	p.startTime = time.Now()
+	p.state = running
+	p.startRunTime = time.Now()
 }
 
 func (p *PerformanceMonitor) periodicReport() {
 	p.reportWG.Add(1)
 	delta := time.Second
-	for p.running {
+	for p.state != stopped {
 
 		pcount := p.opscount
 		start := time.Now()
 		time.Sleep(delta)
-		if p.running {
+		if p.state != stopped {
 
 			nops := p.opscount - pcount
 			cdt := float64(time.Since(start))
-			tdt := float64(time.Since(p.startTime))
-			if !p.active {
+			tdt := float64(time.Since(p.startRunTime))
+
+			if p.state != running {
 				tdt = float64(p.runningDuration)
+			}
+
+			if p.state == warming {
+				tdt = 1
 			}
 
 			crps := float64(nops) * float64(time.Millisecond) / cdt
@@ -151,14 +170,14 @@ func (p *PerformanceMonitor) periodicReport() {
 				memUsage = mem.Used
 			}
 
-			ptime := 100 * time.Since(p.startTime) / p.duration
+			ptime := 100 * time.Since(p.startRunTime) / p.duration
 			sptime := ansi.Color(fmt.Sprintf("%2d%%", ptime), "red")
-			if !p.active {
+			if p.state != running {
 				sptime = "---"
 			}
 
 			fmt.Printf(
-				"[%s] ops: %5.2f/%5.2f - %9d - Load:%3.1f - Cpu:%4.1f - Mem:%.1fGB - %3dsec[%s]\n",
+				"[%s] ops: %5.2f/%5.2f - %9d - Load:%4.1f - Cpu:%5.1f - Mem:%.1fGB - %3dsec[%s]\n",
 				ansi.Color(p.testname, "blue"),
 				crps, trps, /* Kops/sec*/
 				p.opscount,
@@ -179,6 +198,13 @@ func (p *PerformanceMonitor) periodicReport() {
 				MemUsage:     memUsage,
 			})
 
+			if p.state == running {
+				p.stats.CpuLoad += cpuLoad
+				p.stats.CpuUsage += cpuUsage
+				p.stats.MemUsage += memUsage
+				p.stats.EntryCount += 1
+			}
+
 		}
 
 		delta = time.Second*2 - time.Since(start)
@@ -189,17 +215,19 @@ func (p *PerformanceMonitor) periodicReport() {
 
 func (p *PerformanceMonitor) Finish() {
 
-	time.Sleep(time.Second)
-	p.testWG.Wait()
-	p.runningDuration = time.Since(p.startTime)
-	p.active = false
+	if p.state != stopped {
+		time.Sleep(time.Second)
+		p.testWG.Wait()
+		p.runningDuration = time.Since(p.startRunTime)
+		p.state = ending
 
-	/* Keep the CPU load counter active for 10 seconds */
-	time.Sleep(time.Second * 10)
-	p.running = false
+		/* Keep the CPU load counter active for 10 seconds */
+		time.Sleep(time.Second * 5)
+		p.state = stopped
 
-	/* Wait for the reporting to finish */
-	p.reportWG.Wait()
+		/* Wait for the reporting to finish */
+		p.reportWG.Wait()
+	}
 
 }
 
@@ -207,17 +235,45 @@ func (p *PerformanceMonitor) Summary() {
 
 	p.Finish()
 
-	rps := float64(p.opscount) * float64(time.Millisecond) / float64(p.runningDuration)
+	rps := int(float64(p.opscount) * float64(time.Second) / float64(p.runningDuration))
 
 	filename := fmt.Sprintf("%s-%s", strings.Replace(p.testname, "/", "-", -1), time.Now().Format("20060102-150405"))
 
-	header := "# Summary: Generated on: " + time.Now().Format(time.RFC1123Z) + "\n"
-	header += "# Summary: Test Case: " + p.testname + "\n"
-	header += "# Summary: KOps/Sec: " + fmt.Sprintf("%.2fK", rps) + "\n"
-	header += "# Summary: Operations: " + fmt.Sprintf("%d", p.opscount) + " rows\n"
-	header += "# Summary: Duration: " + fmt.Sprintf("%d", p.runningDuration/time.Second) + " seconds\n"
-	header += "# Summary: File: " + filename + "\n"
-	fmt.Printf(ansi.Color("****** Summary ******", "green") + "\n" + header)
+	header := "#Summary: Generated on: " + time.Now().Format(time.RFC1123Z) + "\n"
+	header += "#Summary: Test Case: " + p.testname + "\n"
+	header += "#Summary: Ops/Sec: " + fmt.Sprintf("%d", rps) + "\n"
+	header += "#Summary: Operations: " + fmt.Sprintf("%d", p.opscount) + " rows\n"
+	header += "#Summary: Duration: " + fmt.Sprintf("%d", p.runningDuration/time.Millisecond) + " msec\n"
+	header += "#Summary: Avg Cpu Load: " + fmt.Sprintf("%.2f", float64(p.stats.CpuLoad)/float64(p.stats.EntryCount)) + "\n"
+	header += "#Summary: Avg Cpu Usage: " + fmt.Sprintf("%.2f", float64(p.stats.CpuUsage)/float64(p.stats.EntryCount)) + " %%\n"
+	header += "#Summary: Avg Mem Usage: " + fmt.Sprintf("%d", p.stats.MemUsage/uint64(p.stats.EntryCount)) + " B\n"
+	header += "#Summary: File: " + filename + "\n"
+
+	fmt.Printf(strings.Replace(header, "#Summary:", ansi.Color("Summary:", "green"), -1))
+
+	logFilename := fmt.Sprintf("results/dbperf-results-%s.csv", time.Now().Format("20060102"))
+	if f, err := os.OpenFile(logFilename, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644); err == nil {
+		hostname, _ := os.Hostname()
+		result := fmt.Sprintf("%s, %s, %s, %d, %d, %d, %.2f, %.2f, %d, %s\n",
+			hostname,
+			time.Now().Format("2006-01-02 15:04:05"),
+			p.testname,
+			p.opscount,
+			p.runningDuration/time.Millisecond,
+			rps,
+			float64(p.stats.CpuLoad)/float64(p.stats.EntryCount),
+			float64(p.stats.CpuUsage)/float64(p.stats.EntryCount),
+			p.stats.MemUsage/uint64(p.stats.EntryCount),
+			filename,
+		)
+		if _, err := f.WriteString(result); err != nil {
+			fmt.Printf("%s: %v\n", ansi.Color("Oops, can not write result log", "red"), err)
+		}
+		f.Close()
+		fmt.Println(ansi.Color(result, "blue"))
+	} else {
+		fmt.Printf("%s: %v\n", ansi.Color("Oops, can not write result log", "red"), err)
+	}
 
 	if p.master == nil {
 

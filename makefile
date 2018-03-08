@@ -22,13 +22,17 @@ ifeq ($(MYSQLDB),)
 MYSQLDB = "testuser:12345@/testdb"
 endif
 
+ifeq ($(CLKDB),)
+CLKDB = "http://testuser:12345@tcp(127.0.0.1:9000)/testdb"
+endif
+
 ifeq ($(DURATION),)
 DURATION = 60
 endif
 
 ifeq ($(TABLE),)
-#Possible choices: light, light-with-index, large
-TABLE = "light-with-index"
+#Possible choices: slim, light, light-with-index, large
+TABLE = "light"
 endif
 
 #--------------------------------------------------
@@ -42,38 +46,32 @@ bin/$(PACKAGE): $(GODEPS)
 	@GOPATH=`pwd` go fmt dbtest
 	@GOPATH=`pwd` go fmt dbdriver
 	GOPATH=`pwd` go build -o bin/$(PACKAGE) main.go 
-	@mkdir -p reports
+	@mkdir -p reports results
 
 #--------------------------------------------------
 
-run-all: run-write run-read
+run-all: build run-write run-read
 
-run-write: run-mysql-write run-postgres-write
+#-------------------------------------------------- WRITE
 
-run-postgres-write: build
-	bin/dbperf --mode write --engine postgres --db $(PGXDB) --duration $(DURATION) --table light
-	bin/dbperf --mode write --engine postgres --db $(PGXDB) --duration $(DURATION) --table light-with-index
-	bin/dbperf --mode write --engine postgres --db $(PGXDB) --duration $(DURATION) --table large
+run-write:
+	make perform-all-engines MODE=write DURATION=$(DURATION) TABLE=light
+	make perform-all-engines MODE=write  DURATION=$(DURATION) TABLE=light-with-index
+	make perform-all-engines MODE=write  DURATION=$(DURATION) TABLE=large
 
-run-mysql-write: build
-	bin/dbperf --mode write --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table light
-	bin/dbperf --mode write --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table light
-	bin/dbperf --mode write --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table light-with-index
-	bin/dbperf --mode write --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table light-with-index
-	bin/dbperf --mode write --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table large
-	bin/dbperf --mode write --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table large
+#-------------------------------------------------- READ
 
-run-read: run-mysql-read run-postgres-read
+run-read:
+	make perform-all-engines MODE=read DURATION=$(DURATION) TABLE=light
+	make perform-all-engines MODE=read DURATION=$(DURATION) TABLE=light-with-index
+	make perform-all-engines MODE=read DURATION=$(DURATION) TABLE=large
 
-run-postgres-read: build
-	bin/dbperf --mode read --engine postgres --db $(PGXDB) --duration $(DURATION) --table light
-	bin/dbperf --mode read --engine postgres --db $(PGXDB) --duration $(DURATION) --table large
+#--------------------------------------------------
 
-run-mysql-read: build
-	bin/dbperf --mode read --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table light
-	bin/dbperf --mode read --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table light
-	bin/dbperf --mode read --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table large
-	bin/dbperf --mode read --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table large
+perform-all-engines:
+	bin/dbperf --mode $(MODE) --engine MyISAM --db $(MYSQLDB) --duration $(DURATION) --table $(TABLE)
+	bin/dbperf --mode $(MODE) --engine InnoDB --db $(MYSQLDB) --duration $(DURATION) --table $(TABLE)
+	bin/dbperf --mode $(MODE) --engine postgres --db $(PGXDB) --duration $(DURATION) --table $(TABLE)
 
 #--------------------------------------------------
 
@@ -83,6 +81,9 @@ cleandb: build
 	bin/dbperf --clean --db $(PGXDB) --engine postgres
 
 #--------------------------------------------------
+
+write-clickhouse: build
+	bin/dbperf --mode write --engine clickhouse --db $(CLKDB) --duration $(DURATION) --table $(TABLE)
 
 write-postgres: build
 	bin/dbperf --mode write --engine postgres --db $(PGXDB) --duration $(DURATION) --table $(TABLE)
@@ -101,3 +102,6 @@ write-myisam: build
 
 read-myisam: build
 	bin/dbperf --mode read --engine MyISAM  --db $(MYSQLDB) --duration $(DURATION) --table $(TABLE)
+
+
+
