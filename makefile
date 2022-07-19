@@ -41,11 +41,8 @@ endif
 build: bin/$(PACKAGE)
 
 bin/$(PACKAGE): $(GODEPS)
-	@GOPATH=`pwd` go fmt main.go
-	@GOPATH=`pwd` go fmt dbperf
-	@GOPATH=`pwd` go fmt dbtest
-	@GOPATH=`pwd` go fmt dbdriver
-	GOPATH=`pwd` go build -o bin/$(PACKAGE) main.go 
+	go fmt ./...
+	go build -o bin/$(PACKAGE) main.go 
 	@mkdir -p reports results
 
 #--------------------------------------------------

@@ -1,13 +1,13 @@
 /*
 * @Author: ronan
 * @Date:   2018-03-04 10:41:36
-* @Last Modified by:   ron
-* @Last Modified time: 2018-03-08 08:37:50
+* @Last Modified by:   ronanj
+* @Last Modified time: 2022-07-19 08:17:14
  */
 package dbperf
 
 import (
-	"dbdriver"
+	"dbperf/src/dbdriver"
 	"fmt"
 	"github.com/mgutz/ansi"
 	"github.com/shirou/gopsutil/cpu"
